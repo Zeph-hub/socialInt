@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Social Intelligence Tool Console</title>
+    <link rel="stylesheet" href="/static/styles.css?v=4">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section id="loginView" class="login-view">
+        <div class="login-panel">
+          <p class="eyebrow">Social Intelligence Platform</p>
+          <h1>Backend console</h1>
+          <form id="loginForm" class="stack" novalidate>
+            <label>
+              Username or email
+              <input id="emailInput" type="text" autocomplete="username" placeholder="admin">
+            </label>
+            <label>
+              Password
+              <input id="passwordInput" type="password" autocomplete="current-password" placeholder="admin123">
+            </label>
+            <button id="loginButton" type="submit">Log in</button>
+          </form>
+          <p class="helper-text">Demo access: use any username and any password.</p>
+          <p id="loginError" class="error-text" hidden></p>
+        </div>
+      </section>
+
+      <section id="appView" class="workspace" hidden>
+        <aside class="sidebar">
+          <div class="brand-block">
+            <p class="eyebrow">Social Intelligence</p>
+            <h1>Operations</h1>
+          </div>
+          <nav class="main-nav" aria-label="Main pages">
+            <button class="active" type="button" data-page="overview">Overview</button>
+            <button type="button" data-page="actors">Run Actors</button>
+            <button type="button" data-page="raw">Raw Data</button>
+            <button type="button" data-page="processed">Processed Data</button>
+            <button type="button" data-page="files">Files</button>
+            <button type="button" data-page="backend">Backend</button>
+          </nav>
+          <button id="logoutButton" class="secondary-button" type="button">Log out</button>
+        </aside>
+
+        <section class="content-area">
+          <header class="topbar">
+            <div>
+              <p id="pageEyebrow" class="eyebrow">Overview</p>
+              <h2 id="pageTitle">Pipeline overview</h2>
+            </div>
+            <div class="topbar-actions">
+              <select id="platformInput" aria-label="Platform">
+                <option value="tiktok">TikTok</option>
+                <option value="instagram">Instagram</option>
+                <option value="x">X / Twitter</option>
+                <option value="facebook">Facebook</option>
+                <option value="youtube">YouTube</option>
+                <option value="linkedin">LinkedIn</option>
+              </select>
+              <button id="refreshButton" class="secondary-button" type="button">Refresh</button>
+            </div>
+          </header>
+
+          <div id="statusMessage" class="status-message">Ready</div>
+
+          <section id="overviewPage" class="page active-page">
+            <section class="metric-grid">
+              <div>
+                <span>Raw records</span>
+                <strong id="rawCount">0</strong>
+              </div>
+              <div>
+                <span>Processed records</span>
+                <strong id="processedCount">0</strong>
+              </div>
+              <div>
+                <span>Raw files</span>
+                <strong id="rawFileCount">0</strong>
+              </div>
+              <div>
+                <span>Processed files</span>
+                <strong id="processedFileCount">0</strong>
+              </div>
+            </section>
+
+            <section class="split-grid">
+              <article class="panel">
+                <div class="panel-header">
+                  <h3>Latest raw file</h3>
+                </div>
+                <p id="rawFile" class="large-value">None</p>
+              </article>
+              <article class="panel">
+                <div class="panel-header">
+                  <h3>Latest processed file</h3>
+                </div>
+                <p id="processedFile" class="large-value">None</p>
+              </article>
+            </section>
+          </section>
+
+          <section id="actorsPage" class="page">
+            <article class="panel">
+              <div class="panel-header">
+                <div>
+                  <h3>Run Apify actor</h3>
+                  <p id="actorHelp">Paste targets for the selected platform, one per line.</p>
+                </div>
+              </div>
+              <form id="scrapeForm" class="actor-form">
+                <label>
+                  Targets
+                  <textarea id="targetInput" placeholder="Paste URLs or usernames, one per line"></textarea>
+                </label>
+                <div class="form-row">
+                  <label class="checkbox-label">
+                    <input id="enrichInput" type="checkbox">
+                    Run AI enrichment
+                  </label>
+                  <button id="scrapeButton" type="submit">Run actor</button>
+                </div>
+              </form>
+            </article>
+
+            <article class="panel">
+              <div class="panel-header">
+                <h3>Recent run result</h3>
+              </div>
+              <pre id="runResult" class="small-json">{}</pre>
+            </article>
+          </section>
+
+          <section id="rawPage" class="page">
+            <article class="viewer">
+              <div class="viewer-header">
+                <div>
+                  <h3>Raw data</h3>
+                  <p id="rawMeta">Waiting for data</p>
+                </div>
+                <div class="tabs" data-viewer="raw">
+                  <button class="active" type="button" data-tab="json">JSON</button>
+                  <button type="button" data-tab="table">Table</button>
+                </div>
+              </div>
+              <pre id="rawJson" class="json-panel"></pre>
+              <div id="rawTable" class="table-panel" hidden></div>
+            </article>
+          </section>
+
+          <section id="processedPage" class="page">
+            <article class="viewer">
+              <div class="viewer-header">
+                <div>
+                  <h3>Processed data</h3>
+                  <p id="processedMeta">Waiting for data</p>
+                </div>
+                <div class="tabs" data-viewer="processed">
+                  <button class="active" type="button" data-tab="json">JSON</button>
+                  <button type="button" data-tab="table">Table</button>
+                </div>
+              </div>
+              <pre id="processedJson" class="json-panel"></pre>
+              <div id="processedTable" class="table-panel" hidden></div>
+            </article>
+          </section>
+
+          <section id="filesPage" class="page">
+            <article class="panel">
+              <div class="panel-header">
+                <h3>Data files</h3>
+              </div>
+              <div id="filesTable" class="table-panel compact-table"></div>
+            </article>
+          </section>
+
+          <section id="backendPage" class="page">
+            <section class="split-grid">
+              <article class="panel">
+                <div class="panel-header">
+                  <h3>Service status</h3>
+                </div>
+                <div id="backendCards" class="status-grid"></div>
+              </article>
+              <article class="panel">
+                <div class="panel-header">
+                  <h3>Actor configuration</h3>
+                </div>
+                <div id="actorConfigTable" class="table-panel compact-table"></div>
+              </article>
+            </section>
+          </section>
+        </section>
+      </section>
+    </main>
+    <script src="/static/app.js?v=5"></script>
+  </body>
+</html>

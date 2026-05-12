@@ -11,6 +11,8 @@ router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 class IngestionRequest(BaseModel):
     platform: str
     targets: List[str] # could be usernames, urls, search terms
+    posts_per_page: int = 100
+    comments_per_post: int = 100
     debug: Optional[bool] = False  # Skip processing/enrichment for debugging
     enrich: Optional[bool] = True  # Set false to skip Claude AI analysis only
 
@@ -24,20 +26,22 @@ def trigger_ingestion(request: IngestionRequest):
     """
     try:
         platform = request.platform.lower()
+        posts_per_page = max(1, min(request.posts_per_page, 1000))
+        comments_per_post = max(0, min(request.comments_per_post, 1000))
         
         # Fetch raw data from Apify
         if platform == "tiktok":
-            filepath = apify_service.fetch_tiktok_data(request.targets)
+            filepath = apify_service.fetch_tiktok_data(request.targets, posts_per_page, comments_per_post)
         elif platform == "instagram":
-            filepath = apify_service.fetch_instagram_data(request.targets)
+            filepath = apify_service.fetch_instagram_data(request.targets, posts_per_page, comments_per_post)
         elif platform == "x":
-            filepath = apify_service.fetch_x_data(request.targets)
+            filepath = apify_service.fetch_x_data(request.targets, posts_per_page, comments_per_post)
         elif platform == "facebook":
-            filepath = apify_service.fetch_facebook_data(request.targets)
+            filepath = apify_service.fetch_facebook_data(request.targets, posts_per_page, comments_per_post)
         elif platform == "youtube":
-            filepath = apify_service.fetch_youtube_data(request.targets)
+            filepath = apify_service.fetch_youtube_data(request.targets, posts_per_page, comments_per_post)
         elif platform == "linkedin":
-            filepath = apify_service.fetch_linkedin_data(request.targets)
+            filepath = apify_service.fetch_linkedin_data(request.targets, posts_per_page, comments_per_post)
         else:
             raise HTTPException(status_code=400, detail=f"Unsupported platform: {platform}")
         

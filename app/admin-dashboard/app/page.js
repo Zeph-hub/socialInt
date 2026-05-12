@@ -10,6 +10,7 @@ import {
   Files,
   LayoutDashboard,
   LogOut,
+  MessageSquareText,
   Play,
   RefreshCcw,
   Search,
@@ -17,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   Table2,
+  TrendingUp,
   XCircle,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -38,6 +40,7 @@ const navItems = [
   { id: "actors", label: "Run Actors", icon: Play },
   { id: "data", label: "Data Explorer", icon: Database },
   { id: "reports", label: "Reports", icon: BarChart3 },
+  { id: "analysis", label: "Analysis", icon: TrendingUp },
   { id: "files", label: "Files", icon: Files },
   { id: "backend", label: "Backend", icon: ServerCog },
 ];
@@ -80,12 +83,21 @@ function normalizeRows(data) {
 
 function columnsFor(rows) {
   const preferred = [
+    "Rowid",
+    "Uniqueid",
     "text",
-    "uniqueId",
-    "videoWebUrl",
-    "createTimeISO",
-    "diggCount",
-    "replyCommentTotal",
+    "Ai-sentiment",
+    "Ai-language",
+    "Ai-category",
+    "createtimeiso",
+    "record_type",
+    "page_id",
+    "post_id",
+    "author",
+    "engagement",
+    "likes",
+    "comments",
+    "shares",
     "ai_language",
     "ai_sentiment",
     "ai_category",
@@ -188,6 +200,21 @@ function Distribution({ title, data }) {
   );
 }
 
+function InsightList({ insights }) {
+  const rows = Array.isArray(insights) ? insights : [];
+  return (
+    <article className="panel">
+      <div className="panel-title">
+        <h3>Insights</h3>
+        <Sparkles size={18} />
+      </div>
+      <div className="insight-list">
+        {rows.length ? rows.map((insight) => <p key={insight}>{insight}</p>) : <div className="empty-state">No insights available yet.</div>}
+      </div>
+    </article>
+  );
+}
+
 function LoginScreen({ onLogin }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -242,11 +269,14 @@ export default function AdminDashboard() {
   const [processedLatest, setProcessedLatest] = useState(null);
   const [files, setFiles] = useState([]);
   const [reportSummary, setReportSummary] = useState(null);
+  const [analysis, setAnalysis] = useState(null);
   const [reportRows, setReportRows] = useState([]);
   const [dataRows, setDataRows] = useState([]);
   const [dataKind, setDataKind] = useState("processed");
   const [dataMode, setDataMode] = useState("table");
   const [targets, setTargets] = useState("");
+  const [postsPerPage, setPostsPerPage] = useState(100);
+  const [commentsPerPost, setCommentsPerPost] = useState(100);
   const [enrich, setEnrich] = useState(true);
   const [debug, setDebug] = useState(false);
   const [runResult, setRunResult] = useState(null);
@@ -260,13 +290,14 @@ export default function AdminDashboard() {
   async function refreshAll() {
     setStatus("Loading dashboard data...");
     setStatusType("");
-    const [rawResult, processedResult, fileResult, backendResult, summaryResult, reportResult] = await Promise.allSettled([
+    const [rawResult, processedResult, fileResult, backendResult, summaryResult, reportResult, analysisResult] = await Promise.allSettled([
       fetchJson(`/files/latest/${platform}?kind=raw`),
       fetchJson(`/files/latest/${platform}?kind=processed`),
       fetchJson(`/files/list/${platform}?kind=all`),
       fetchJson("/admin/status"),
       fetchJson(`/powerbi/summary/${platform}`),
       fetchJson(`/powerbi/data/${platform}?limit=250&offset=0`),
+      fetchJson(`/analysis/${platform}`),
     ]);
 
     setRawLatest(rawResult.status === "fulfilled" ? rawResult.value : null);
@@ -275,8 +306,9 @@ export default function AdminDashboard() {
     setBackend(backendResult.status === "fulfilled" ? backendResult.value : null);
     setReportSummary(summaryResult.status === "fulfilled" ? summaryResult.value : null);
     setReportRows(reportResult.status === "fulfilled" ? normalizeRows(reportResult.value.data) : []);
+    setAnalysis(analysisResult.status === "fulfilled" ? analysisResult.value : null);
 
-    const failures = [rawResult, processedResult, fileResult, backendResult, summaryResult, reportResult].filter((result) => result.status === "rejected");
+    const failures = [rawResult, processedResult, fileResult, backendResult, summaryResult, reportResult, analysisResult].filter((result) => result.status === "rejected");
     if (backendResult.status === "rejected") {
       setStatus(backendResult.reason.message);
       setStatusType("error");
@@ -319,7 +351,14 @@ export default function AdminDashboard() {
       const result = await fetchJson("/ingestion/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform, targets: targetList, enrich, debug }),
+        body: JSON.stringify({
+          platform,
+          targets: targetList,
+          posts_per_page: Number(postsPerPage) || 100,
+          comments_per_post: Number(commentsPerPost) || 0,
+          enrich,
+          debug,
+        }),
       });
       setRunResult(result);
       setStatus(result.warning || result.message || "Actor finished.");
@@ -355,7 +394,7 @@ export default function AdminDashboard() {
   const counts = backend?.file_counts?.[platform] || {};
   const rawRows = normalizeRows(rawLatest?.data);
   const processedRows = normalizeRows(processedLatest?.data);
-  const totalEngagement = reportRows.reduce((sum, row) => sum + Number(row.diggCount || 0) + Number(row.replyCommentTotal || 0), 0);
+  const totalEngagement = reportRows.reduce((sum, row) => sum + Number(row.engagement || 0), 0);
   const hasReportFilters = Object.values(filters).some((value) => value.trim());
   const activeReportSummary =
     hasReportFilters && reportRows.length
@@ -487,6 +526,16 @@ export default function AdminDashboard() {
                   Targets
                   <textarea value={targets} onChange={(event) => setTargets(event.target.value)} placeholder={placeholders[platform]} />
                 </label>
+                <div className="split-grid">
+                  <label>
+                    Posts per page
+                    <input type="number" min="1" max="1000" value={postsPerPage} onChange={(event) => setPostsPerPage(event.target.value)} />
+                  </label>
+                  <label>
+                    Comments per post
+                    <input type="number" min="0" max="1000" value={commentsPerPost} onChange={(event) => setCommentsPerPost(event.target.value)} />
+                  </label>
+                </div>
                 <div className="control-row">
                   <label className="check-control">
                     <input type="checkbox" checked={enrich} onChange={(event) => setEnrich(event.target.checked)} />
@@ -597,6 +646,48 @@ export default function AdminDashboard() {
             </div>
 
             <DataTable rows={reportRows} />
+          </section>
+        ) : null}
+
+        {activePage === "analysis" ? (
+          <section className="page-stack">
+            <div className="metric-grid">
+              <article className="metric-card accent-teal">
+                <span>Posts</span>
+                <strong>{formatNumber(analysis?.total_posts || 0)}</strong>
+              </article>
+              <article className="metric-card accent-indigo">
+                <span>Comments</span>
+                <strong>{formatNumber(analysis?.total_comments || 0)}</strong>
+              </article>
+              <article className="metric-card accent-amber">
+                <span>Avg engagement</span>
+                <strong>{formatNumber(analysis?.average_engagement || 0)}</strong>
+              </article>
+              <article className="metric-card accent-rose">
+                <span>Trend</span>
+                <strong>{analysis?.predicted_trend || "unknown"}</strong>
+              </article>
+            </div>
+
+            <div className="split-grid">
+              <InsightList insights={analysis?.insights} />
+              <Distribution title="Record types" data={analysis?.record_type_distribution} />
+            </div>
+
+            <div className="three-grid">
+              <Distribution title="Sentiment" data={analysis?.sentiment_distribution} />
+              <Distribution title="Categories" data={analysis?.category_distribution} />
+              <Distribution title="Languages" data={analysis?.language_distribution} />
+            </div>
+
+            <article className="panel">
+              <div className="panel-title">
+                <h3>Top posts and comment response</h3>
+                <MessageSquareText size={18} />
+              </div>
+              <DataTable rows={analysis?.top_posts || []} />
+            </article>
           </section>
         ) : null}
 

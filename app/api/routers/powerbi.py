@@ -1,8 +1,7 @@
 import json
-import os
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
-from app.services.storage_service import storage_service
+from app.services.analysis_service import analysis_service
 
 router = APIRouter(prefix="/powerbi", tags=["powerbi"])
 
@@ -21,16 +20,9 @@ def get_platform_data(
     """
     platform = platform.lower()
     
-    # Find the most recent enriched file for the platform
-    files = list(storage_service.processed_dir.glob(f"{platform}_processed_*_enriched.json"))
-    if not files:
-        # Fallback to just processed if no enriched file exists
-        files = list(storage_service.processed_dir.glob(f"{platform}_processed_*.json"))
-        if not files:
-            raise HTTPException(status_code=404, detail=f"No processed data found for platform: {platform}")
-            
-    # Sort files by modification time (most recent first)
-    latest_file = sorted(files, key=os.path.getmtime, reverse=True)[0]
+    latest_file = analysis_service.latest_processed_file(platform)
+    if not latest_file:
+        raise HTTPException(status_code=404, detail=f"No processed data found for platform: {platform}")
     
     try:
         with open(latest_file, 'r', encoding='utf-8') as f:
@@ -38,11 +30,11 @@ def get_platform_data(
             
         # Apply filters
         if language:
-            data = [item for item in data if item.get("ai_language", "").lower() == language.lower()]
+            data = [item for item in data if item.get("ai_language", item.get("Ai-language", "")).lower() == language.lower()]
         if sentiment:
-            data = [item for item in data if item.get("ai_sentiment", "").lower() == sentiment.lower()]
+            data = [item for item in data if item.get("ai_sentiment", item.get("Ai-sentiment", "")).lower() == sentiment.lower()]
         if category:
-            data = [item for item in data if item.get("ai_category", "").lower() == category.lower()]
+            data = [item for item in data if item.get("ai_category", item.get("Ai-category", "")).lower() == category.lower()]
             
         # Apply pagination
         total_records = len(data)
@@ -65,26 +57,17 @@ def get_platform_summary(platform: str):
     """
     Returns a brief aggregate summary for a specific platform's latest data.
     """
-    data_response = get_platform_data(platform=platform, limit=10000, offset=0)
-    data = data_response["data"]
-    
-    sentiment_counts = {}
-    category_counts = {}
-    language_counts = {}
-    
-    for item in data:
-        sentiment = item.get("ai_sentiment", "unknown")
-        category = item.get("ai_category", "unknown")
-        language = item.get("ai_language", "unknown")
-        
-        sentiment_counts[sentiment] = sentiment_counts.get(sentiment, 0) + 1
-        category_counts[category] = category_counts.get(category, 0) + 1
-        language_counts[language] = language_counts.get(language, 0) + 1
-        
+    analysis = analysis_service.analyze_platform(platform)
     return {
         "platform": platform,
-        "total_records": len(data),
-        "sentiment_distribution": sentiment_counts,
-        "category_distribution": category_counts,
-        "language_distribution": language_counts
+        "total_records": analysis["total_records"],
+        "total_posts": analysis["total_posts"],
+        "total_comments": analysis["total_comments"],
+        "total_engagement": analysis["total_engagement"],
+        "average_engagement": analysis["average_engagement"],
+        "predicted_trend": analysis["predicted_trend"],
+        "sentiment_distribution": analysis["sentiment_distribution"],
+        "category_distribution": analysis["category_distribution"],
+        "language_distribution": analysis["language_distribution"],
+        "record_type_distribution": analysis["record_type_distribution"],
     }

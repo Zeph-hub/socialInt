@@ -1,0 +1,9 @@
+[
+  {
+    "invalidUrls": [
+      "https://www.tiktok.com/@senator_methu"
+    ],
+    "error": "Invalid URLs/identifiers have been provided to the actor. Please check their correctness (i.e. it is a full correctly formatted URL, or a valid profile/hashtag name). Open an issue if we don't handle a valid URL.",
+    "errorCode": "INVALID_URLS"
+  }
+]

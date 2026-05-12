@@ -1,0 +1,26 @@
+[
+  {
+    "Rowid": 1,
+    "Uniqueid": "tiktok-1",
+    "platform": "tiktok",
+    "record_type": "post",
+    "page_id": "",
+    "post_id": "tiktok-post-1",
+    "parent_post_id": "tiktok-post-1",
+    "author": "",
+    "text": "",
+    "ai_language": "unknown",
+    "ai_sentiment": "neutral",
+    "ai_category": "uncategorized",
+    "Ai-language": "unknown",
+    "Ai-sentiment": "neutral",
+    "Ai-category": "uncategorized",
+    "createtimeiso": null,
+    "url": "",
+    "likes": 0,
+    "comments": 0,
+    "shares": 0,
+    "views": 0,
+    "engagement": 0
+  }
+]

@@ -3,7 +3,7 @@ from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
-from app.api.routers import admin, files, ingestion, powerbi
+from app.api.routers import admin, analysis, files, ingestion, powerbi
 
 def create_app() -> FastAPI:
     app = FastAPI(
@@ -29,6 +29,7 @@ def create_app() -> FastAPI:
         
     # Include routers here
     app.include_router(ingestion.router, prefix=settings.API_V1_STR)
+    app.include_router(analysis.router, prefix=settings.API_V1_STR)
     app.include_router(powerbi.router, prefix=settings.API_V1_STR)
     app.include_router(files.router, prefix=settings.API_V1_STR)
     app.include_router(admin.router, prefix=settings.API_V1_STR)

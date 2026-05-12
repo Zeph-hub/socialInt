@@ -41,7 +41,7 @@ class ApifyService:
         
         return results
 
-    def _build_tiktok_input(self, targets: List[str]) -> Dict[str, Any]:
+    def _build_tiktok_input(self, targets: List[str], posts_per_page: int = 100, comments_per_post: int = 100) -> Dict[str, Any]:
         actor_id = settings.ACTOR_TIKTOK_ID.lower()
 
         if "tiktok-comments-scraper" in actor_id:
@@ -55,56 +55,64 @@ class ApifyService:
 
             return {
                 "postURLs": targets,
-                "commentsPerPost": 100,
+                "commentsPerPost": comments_per_post,
                 "maxRepliesPerComment": 0,
-                "resultsPerPage": 100,
+                "resultsPerPage": posts_per_page,
             }
 
         return {
             "profiles": [target.lstrip("@") for target in targets],
-            "resultsPerPage": 100,
+            "resultsPerPage": posts_per_page,
+            "commentsPerPost": comments_per_post,
         }
 
-    def fetch_tiktok_data(self, targets: List[str]) -> str:
-        run_input = self._build_tiktok_input(targets)
+    def fetch_tiktok_data(self, targets: List[str], posts_per_page: int = 100, comments_per_post: int = 100) -> str:
+        run_input = self._build_tiktok_input(targets, posts_per_page, comments_per_post)
         data = self.run_actor(settings.ACTOR_TIKTOK_ID, run_input)
         return storage_service.save_raw_data("tiktok", data)
 
-    def fetch_instagram_data(self, usernames: List[str]) -> str:
+    def fetch_instagram_data(self, usernames: List[str], posts_per_page: int = 100, comments_per_post: int = 100) -> str:
         run_input = {
             "directUrls": [f"https://www.instagram.com/{u}/" for u in usernames],
             "resultsType": "details",
+            "resultsLimit": posts_per_page,
+            "commentsLimit": comments_per_post,
         }
         data = self.run_actor(settings.ACTOR_INSTAGRAM_ID, run_input)
         return storage_service.save_raw_data("instagram", data)
 
-    def fetch_x_data(self, search_terms: List[str]) -> str:
+    def fetch_x_data(self, search_terms: List[str], posts_per_page: int = 100, comments_per_post: int = 100) -> str:
         run_input = {
             "searchTerms": search_terms,
-            "maxItems": 100,
+            "maxItems": posts_per_page,
+            "maxReplies": comments_per_post,
         }
         data = self.run_actor(settings.ACTOR_X_ID, run_input)
         return storage_service.save_raw_data("x", data)
 
-    def fetch_facebook_data(self, pages: List[str]) -> str:
+    def fetch_facebook_data(self, pages: List[str], posts_per_page: int = 100, comments_per_post: int = 100) -> str:
         run_input = {
             "startUrls": [{"url": p} for p in pages],
-            "maxPosts": 100,
+            "maxPosts": posts_per_page,
+            "maxComments": comments_per_post,
         }
         data = self.run_actor(settings.ACTOR_FACEBOOK_ID, run_input)
         return storage_service.save_raw_data("facebook", data)
 
-    def fetch_youtube_data(self, channels: List[str]) -> str:
+    def fetch_youtube_data(self, channels: List[str], posts_per_page: int = 100, comments_per_post: int = 100) -> str:
         run_input = {
             "startUrls": [{"url": c} for c in channels],
-            "maxResults": 100,
+            "maxResults": posts_per_page,
+            "maxComments": comments_per_post,
         }
         data = self.run_actor(settings.ACTOR_YOUTUBE_ID, run_input)
         return storage_service.save_raw_data("youtube", data)
 
-    def fetch_linkedin_data(self, urls: List[str]) -> str:
+    def fetch_linkedin_data(self, urls: List[str], posts_per_page: int = 100, comments_per_post: int = 100) -> str:
         run_input = {
             "urls": urls,
+            "maxPosts": posts_per_page,
+            "maxComments": comments_per_post,
         }
         data = self.run_actor(settings.ACTOR_LINKEDIN_ID, run_input)
         return storage_service.save_raw_data("linkedin", data)

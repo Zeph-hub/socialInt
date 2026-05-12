@@ -16,14 +16,40 @@ class AIService:
         if not self.client:
             raise ValueError("Anthropic API key is not configured. Please set ANTHROPIC_API_KEY in .env")
 
+    def _fallback_analysis(self, text: str) -> Dict[str, Any]:
+        lowered = (text or "").lower()
+        positive = ("good", "great", "love", "excellent", "happy", "win", "best", "amazing")
+        negative = ("bad", "hate", "angry", "poor", "fail", "worst", "broken", "sad")
+        sentiment = "neutral"
+        if any(word in lowered for word in positive):
+            sentiment = "positive"
+        if any(word in lowered for word in negative):
+            sentiment = "negative"
+
+        categories = {
+            "politics": ("election", "government", "policy", "president", "minister", "vote"),
+            "business": ("price", "market", "brand", "sales", "customer", "company"),
+            "sports": ("game", "match", "team", "score", "league", "player"),
+            "technology": ("ai", "app", "software", "phone", "data", "tech"),
+            "entertainment": ("music", "movie", "show", "celebrity", "dance", "video"),
+        }
+        category = "other"
+        for name, words in categories.items():
+            if any(word in lowered for word in words):
+                category = name
+                break
+
+        return {"language": "unknown", "sentiment": sentiment, "category": category}
+
     def analyze_text(self, text: str) -> Dict[str, Any]:
         """
         Uses Claude to detect language and classify the text.
         Returns a dictionary with 'language', 'sentiment', and 'category'.
         """
-        self._ensure_client()
         if not text or not str(text).strip():
             return {"language": "unknown", "sentiment": "neutral", "category": "uncategorized"}
+        if not self.client:
+            return self._fallback_analysis(text)
 
         prompt = f"""
         Analyze the following social media text and provide a JSON response with three fields:
@@ -64,6 +90,20 @@ class AIService:
             logger.error(f"Error during AI analysis: {str(e)}")
             return {"language": "error", "sentiment": "error", "category": "error"}
 
+    def _apply_analysis(self, item: Dict[str, Any], ai_results: Dict[str, Any]) -> Dict[str, Any]:
+        detected_language = ai_results.get("language")
+        language = item.get("ai_language") if detected_language in (None, "", "unknown") else detected_language
+        language = language or "unknown"
+        sentiment = ai_results.get("sentiment") or "neutral"
+        category = ai_results.get("category") or "other"
+        item["ai_language"] = language
+        item["ai_sentiment"] = sentiment
+        item["ai_category"] = category
+        item["Ai-language"] = language
+        item["Ai-sentiment"] = sentiment
+        item["Ai-category"] = category
+        return item
+
     def process_data_with_ai(self, platform: str, processed_filepath: str) -> str:
         """
         Loads already flattened (processed) data, runs AI analysis on text fields,
@@ -76,15 +116,10 @@ class AIService:
             enriched_data = []
             # Determine the key for text based on platform or general structure
             for item in data:
-                # Common text fields in social media data
                 text = item.get("text") or item.get("description") or item.get("title") or item.get("content") or ""
                 
                 ai_results = self.analyze_text(str(text))
-                
-                # Merge AI results into the item
-                item["ai_language"] = ai_results["language"]
-                item["ai_sentiment"] = ai_results["sentiment"]
-                item["ai_category"] = ai_results["category"]
+                item = self._apply_analysis(item, ai_results)
                 
                 enriched_data.append(item)
                 

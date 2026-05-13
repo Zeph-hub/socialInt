@@ -1,0 +1,46 @@
+{
+  "71d28deb-a957-4098-a734-bb8527d3bf58": {
+    "job_id": "71d28deb-a957-4098-a734-bb8527d3bf58",
+    "platform": "tiktok",
+    "targets": [
+      "https://www.tiktok.com/@shujaa.humphrey/video/7633494915338472725?is_from_webapp=1&sender_device=pc&web_id=7608452549100357137"
+    ],
+    "status": "completed",
+    "created_at": "2026-05-13T23:50:48.797968",
+    "updated_at": "2026-05-13T23:52:34.930061",
+    "result": {
+      "raw_filepath": "data\\raw\\tiktok_20260513_235234.json",
+      "processed_filepath": "data\\processed\\tiktok_processed_20260513_235234.json",
+      "enriched_filepath": "data\\processed\\tiktok_processed_20260513_235234_enriched.json"
+    },
+    "error": null
+  },
+  "edf93414-8547-4d80-a7d4-0fc3387a416e": {
+    "job_id": "edf93414-8547-4d80-a7d4-0fc3387a416e",
+    "platform": "tiktok",
+    "targets": [
+      "https://www.tiktok.com/@shujaa.humphrey/video/7633494915338472725?is_from_webapp=1&sender_device=pc&web_id=7608452549100357137"
+    ],
+    "status": "completed",
+    "created_at": "2026-05-13T23:51:53.340944",
+    "updated_at": "2026-05-13T23:58:26.060997",
+    "result": {
+      "raw_filepath": "data\\raw\\tiktok_20260513_235825.json",
+      "processed_filepath": "data\\processed\\tiktok_processed_20260513_235825.json",
+      "enriched_filepath": "data\\processed\\tiktok_processed_20260513_235825_enriched.json"
+    },
+    "error": null
+  },
+  "09322679-2703-4e36-9421-70db82642657": {
+    "job_id": "09322679-2703-4e36-9421-70db82642657",
+    "platform": "tiktok",
+    "targets": [
+      "https://www.tiktok.com/@shujaa.humphrey/video/7633494915338472725?is_from_webapp=1&sender_device=pc&web_id=7608452549100357137"
+    ],
+    "status": "failed",
+    "created_at": "2026-05-13T23:51:55.965706",
+    "updated_at": "2026-05-13T23:52:17.459579",
+    "result": null,
+    "error": "By launching this job you will exceed the memory limit of 8192MB for all your Actor runs and builds (currently used: 8192MB, requested: 4096MB). Please consider an upgrade to a paid plan at https://console.apify.com/billing/subscription to increase your Actor memory limit."
+  }
+}

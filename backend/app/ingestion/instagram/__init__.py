@@ -1,0 +1,1 @@
+from .service import instagram_ingestion_service

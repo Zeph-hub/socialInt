@@ -87,9 +87,9 @@ jobs:
             # Restart backend
             # Assuming a process manager like pm2 or systemd is used
             # If using pm2:
-            # cd backend && pm2 restart all || pm2 start "python -m uvicorn app.main:app" --name social-backend
+            cd backend && pm2 restart all || pm2 start "python -m uvicorn app.main:app" --name social-backend
             
             # Restart/Build frontend
-            # cd backend/admin-dashboard && npm install && npm run build && pm2 restart social-frontend || pm2 start "npm run start" --name social-frontend
+            cd backend/admin-dashboard && npm install && npm run build && pm2 restart social-frontend || pm2 start "npm run start" --name social-frontend
             
             echo "Deployment successful."

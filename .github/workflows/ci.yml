@@ -86,7 +86,7 @@ jobs:
             
             # Restart backend
             # Assuming a process manager like pm2 or systemd is used
-            # If using pm2:
+            # I'm using pm2:
             cd backend && pm2 restart all || pm2 start "python -m uvicorn app.main:app" --name social-backend
             
             # Restart/Build frontend

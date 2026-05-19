@@ -56,7 +56,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "18"
 
       - name: Install Node dependencies
         run: npm install
@@ -64,7 +64,7 @@ jobs:
       - name: Build admin dashboard
         env:
           NEXT_TELEMETRY_DISABLED: "1"
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+          NEXT_PUBLIC_API_URL: http://0.0.0.0:8000
         run: npm run build
 
   deploy:

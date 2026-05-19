@@ -1,55 +1,95 @@
-deploy:
-  name: Deploy to Dev Server
-  needs: [backend, admin-dashboard]
-  if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-  runs-on: ubuntu-latest
+name: CI
 
-  steps:
-    - name: Deploy via SSH
-      uses: appleboy/ssh-action@v1.0.3
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+    branches:
+      - main
+      - master
 
-      with:
-        host: ${{ secrets.SERVER_HOST }}
-        username: ${{ secrets.SERVER_USER }}
-        key: ${{ secrets.SERVER_SSH_KEY }}
-        port: 22
-        debug: true
-        script_stop: true
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
 
-        script: |
-          set -e
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-          export PATH=$PATH:/usr/local/bin
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
 
-          echo "Connected to server"
-          whoami
-          hostname
-
-          cd ${{ secrets.PROJECT_PATH }}
-
-          echo "Pulling latest code..."
-          git pull origin ${{ github.ref_name }}
-
-          echo "Entering backend..."
-          cd backend
-
-          echo "Activating virtual environment..."
-          source venv/bin/activate || true
-
-          echo "Installing dependencies..."
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
           pip install -r ../requirements.txt
 
-          echo "Checking PM2..."
-          which pm2
-          pm2 list
+      - name: Validate Python package imports
+        env:
+          APIFY_API_TOKEN: ""
+          ANTHROPIC_API_KEY: ""
+          DATA_DIR: ./data
+        run: |
+          python -m compileall app/
+          python -c "from app.main import app; print(app.title)"
 
-          echo "Restarting backend..."
+  admin-dashboard:
+    name: Admin dashboard
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend/admin-dashboard
 
-          pm2 delete social-backend || true
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-          pm2 start "python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000" \
-            --name social-backend
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
 
-          pm2 save
+      - name: Install Node dependencies
+        run: npm install
 
-          echo "Deployment successful."
+      - name: Build admin dashboard
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"
+          NEXT_PUBLIC_API_URL: http://0.0.0.0:8000
+        run: npm run build
+
+  deploy:
+    name: Deploy to Dev Server
+    needs: [backend, admin-dashboard]
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            cd ${{ secrets.PROJECT_PATH }}
+            git pull origin ${{ github.ref_name }}
+            
+            # Restart backend
+            # Assuming a process manager like pm2 or systemd is used
+            # I'm using pm2:
+            cd backend && pm2 restart all || pm2 start "python -m uvicorn app.main:app" --name social-backend
+            
+            # Restart/Build frontend
+            cd backend/admin-dashboard && npm install && npm run build && pm2 restart social-frontend || pm2 start "npm run start" --name social-frontend
+            
+            echo "Deployment successful."

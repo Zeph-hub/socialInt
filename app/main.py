@@ -25,7 +25,7 @@ def create_app() -> FastAPI:
 
     @app.get("/")
     def root():
-        return RedirectResponse("http://127.0.0.1:3000")
+        return RedirectResponse("http://0.0.0.0:3000")
         
     # Include routers here
     app.include_router(ingestion.router, prefix=settings.API_V1_STR)

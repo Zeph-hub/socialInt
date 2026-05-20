@@ -1,10 +1,10 @@
 from typing import List, Optional
-import anthropic
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
-from app.services.apify_service import apify_service
-from app.services.processing_service import processing_service
-from app.services.ai_service import ai_service
+from app.orchestration.models import PipelineExecution
+from app.pipelines.social_pipeline import run_social_pipeline_async
+from app.workers.scheduler import worker_scheduler
+from app.utils.logger import log
 
 router = APIRouter(prefix="/ingestion", tags=["ingestion"])
 
@@ -13,88 +13,48 @@ class IngestionRequest(BaseModel):
     targets: List[str] # could be usernames, urls, search terms
     posts_per_page: int = 100
     comments_per_post: int = 100
-    debug: Optional[bool] = False  # Skip processing/enrichment for debugging
-    enrich: Optional[bool] = True  # Set false to skip Claude AI analysis only
+    skip_ai: Optional[bool] = False
 
 @router.post("/")
 def trigger_ingestion(request: IngestionRequest):
     """
-    Trigger data ingestion from Apify for a specific platform.
-    
-    Set debug=true to skip processing/enrichment and get raw data directly,
-    allowing you to compare with the Apify dashboard output.
+    Trigger data ingestion and processing pipeline in the background.
+    Returns a pipeline_id which can be used to track the status.
     """
+    platform = request.platform.lower()
+    valid_platforms = ["tiktok", "instagram", "x", "facebook", "youtube", "linkedin"]
+    
+    if platform not in valid_platforms:
+        raise HTTPException(status_code=400, detail=f"Unsupported platform: {platform}")
+        
+    posts_per_page = max(1, min(request.posts_per_page, 1000))
+    comments_per_post = max(0, min(request.comments_per_post, 1000))
+    
+    # Initialize pipeline execution tracking
+    execution = PipelineExecution(
+        platform=platform,
+        targets=request.targets
+    )
+    
     try:
-        platform = request.platform.lower()
-        posts_per_page = max(1, min(request.posts_per_page, 1000))
-        comments_per_post = max(0, min(request.comments_per_post, 1000))
+        # Enqueue the pipeline job to the background worker scheduler
+        job_id = worker_scheduler.enqueue_pipeline(
+            run_social_pipeline_async,
+            execution=execution,
+            skip_ai=request.skip_ai,
+            posts_per_page=posts_per_page,
+            comments_per_post=comments_per_post
+        )
         
-        # Fetch raw data from Apify
-        if platform == "tiktok":
-            filepath = apify_service.fetch_tiktok_data(request.targets, posts_per_page, comments_per_post)
-        elif platform == "instagram":
-            filepath = apify_service.fetch_instagram_data(request.targets, posts_per_page, comments_per_post)
-        elif platform == "x":
-            filepath = apify_service.fetch_x_data(request.targets, posts_per_page, comments_per_post)
-        elif platform == "facebook":
-            filepath = apify_service.fetch_facebook_data(request.targets, posts_per_page, comments_per_post)
-        elif platform == "youtube":
-            filepath = apify_service.fetch_youtube_data(request.targets, posts_per_page, comments_per_post)
-        elif platform == "linkedin":
-            filepath = apify_service.fetch_linkedin_data(request.targets, posts_per_page, comments_per_post)
-        else:
-            raise HTTPException(status_code=400, detail=f"Unsupported platform: {platform}")
-        
-        # Return early in debug mode
-        if request.debug:
-            return {
-                "status": "success",
-                "mode": "debug",
-                "message": f"Raw data fetched for {platform} (no processing/enrichment)",
-                "filepath": filepath
-            }
-        
-        # Processing step
-        processed_filepath = processing_service.process_and_save_data(platform, filepath)
-        
-        if not request.enrich:
-            return {
-                "status": "success",
-                "mode": "no_ai",
-                "message": f"Data fetched and processed for {platform} (AI enrichment skipped)",
-                "filepaths": {
-                    "raw": filepath,
-                    "processed": processed_filepath,
-                    "enriched": None
-                }
-            }
-        
-        try:
-            # AI Analysis step
-            enriched_filepath = ai_service.process_data_with_ai(platform, processed_filepath)
-        except anthropic.AuthenticationError:
-            return {
-                "status": "partial_success",
-                "message": (
-                    f"Data fetched and processed for {platform}, but AI enrichment was skipped "
-                    "because ANTHROPIC_API_KEY is invalid."
-                ),
-                "filepaths": {
-                    "raw": filepath,
-                    "processed": processed_filepath,
-                    "enriched": None
-                },
-                "warning": "Update ANTHROPIC_API_KEY in .env with a valid Anthropic Console API key, then restart the API server."
-            }
+        log.info("Pipeline triggered from API", pipeline_id=job_id, platform=platform)
         
         return {
-            "status": "success", 
-            "message": f"Data fetched, processed, and enriched for {platform}", 
-            "filepaths": {
-                "raw": filepath,
-                "processed": processed_filepath,
-                "enriched": enriched_filepath
-            }
+            "status": "accepted",
+            "message": f"Pipeline execution started for {platform}",
+            "pipeline_id": job_id,
+            "tracking_url": f"/api/v1/monitoring/pipelines/{job_id}"
         }
+        
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        log.error("Failed to trigger pipeline", error=str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to trigger pipeline: {str(e)}")

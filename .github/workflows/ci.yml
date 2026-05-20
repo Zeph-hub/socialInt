@@ -64,7 +64,7 @@ jobs:
       - name: Build admin dashboard
         env:
           NEXT_TELEMETRY_DISABLED: "1"
-          NEXT_PUBLIC_API_URL: http://127.0.0.1:8000
+          NEXT_PUBLIC_API_URL: http://0.0.0.0:8000
         run: npm run build
 
   deploy:
